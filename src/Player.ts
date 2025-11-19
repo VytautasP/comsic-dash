@@ -35,8 +35,8 @@ export class Player {
                 // Parent all loaded meshes and rotate them
                 result.meshes.forEach((mesh, index) => {
                     mesh.parent = playerMesh;
-                    // Just rotate -90 degrees on X axis to make it face forward
-                    mesh.rotate(Vector3.Right(), -Math.PI / 2, 0);
+                    // Just rotate -180 degrees on X axis to make it face forward
+                    mesh.rotate(Vector3.Right(), - Math.PI, 0);
                 });
                 
                 // Scale the entire model
@@ -193,7 +193,7 @@ export class Player {
         // Create invisible emitter mesh at the back of the ship
         const emitterMesh = MeshBuilder.CreateBox('thrusterEmitter', { size: 0.1 }, this.scene);
         emitterMesh.parent = parent;
-        emitterMesh.position = new Vector3(0, 1.8, -6); // Position at back engines (positive Z for back)
+        emitterMesh.position = new Vector3(0, -5.5, -1.8); // Position at back engines (positive Z for back)
         emitterMesh.isVisible = false;
         
         const particleSystem = new ParticleSystem('trail', 2000, this.scene);
