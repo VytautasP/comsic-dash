@@ -1,23 +1,21 @@
-import { Scene, Mesh, Vector3, SceneLoader, MeshBuilder, StandardMaterial, Color3, Color4, ParticleSystem, Texture, SphereParticleEmitter } from '@babylonjs/core';
+import { Scene, Mesh, Vector3, SceneLoader, MeshBuilder, StandardMaterial, Color3, Color4, ParticleSystem, Texture, SphereParticleEmitter, Scalar } from '@babylonjs/core';
 import '@babylonjs/loaders/glTF';
 
 export class Player {
     public mesh: Mesh;
     private scene: Scene;
     private trail: ParticleSystem | null = null;
-    private lane = 0;
-    private laneY = 0;
-    private targetX = 0;
-    private targetY = 0.5;
-    private isMovingX = false;
-    private isMovingY = false;
+    private velocity = Vector3.Zero();
+    private inputVector = Vector3.Zero();
+    private readonly ACCELERATION = 20;
+    private readonly MAX_SPEED = 10;
+    private readonly DRAG = 5;
     public shieldActive = false;
     private shieldMesh: Mesh | null = null;
 
     constructor(scene: Scene) {
         this.scene = scene;
         this.mesh = new Mesh('playerPlaceholder', this.scene);
-        this.targetY = 0.5;
     }
 
     public async load(): Promise<void> {
@@ -36,7 +34,7 @@ export class Player {
                 result.meshes.forEach((mesh, index) => {
                     mesh.parent = playerMesh;
                     // Just rotate -180 degrees on X axis to make it face forward
-                    mesh.rotate(Vector3.Right(), - Math.PI, 0);
+                    mesh.rotate(Vector3.Right(), - Math.PI / 2, 0);
                 });
                 
                 // Scale the entire model
@@ -60,13 +58,16 @@ export class Player {
     }
 
     private createProceduralModel(): Mesh {
+        const root = new Mesh('playerRoot', this.scene);
+        root.position = new Vector3(0, 0.5, -3);
+
         // Create main body (fuselage) - elongated cylinder for sleek look
         const ship = MeshBuilder.CreateCylinder(
             'player',
             { height: 1.5, diameterTop: 0.3, diameterBottom: 0.5, tessellation: 16 },
             this.scene
         );
-        ship.position = new Vector3(0, 0.5, -3);
+        ship.parent = root;
         ship.rotation.x = Math.PI / 2; // Rotate to point forward
 
         const bodyMaterial = new StandardMaterial('playerMat', this.scene);
@@ -186,14 +187,14 @@ export class Player {
         // Create particle trail
         this.createParticleTrail(ship);
 
-        return ship;
+        return root;
     }
 
     private createParticleTrail(parent: Mesh): void {
         // Create invisible emitter mesh at the back of the ship
         const emitterMesh = MeshBuilder.CreateBox('thrusterEmitter', { size: 0.1 }, this.scene);
         emitterMesh.parent = parent;
-        emitterMesh.position = new Vector3(0, -5.5, -1.8); // Position at back engines (positive Z for back)
+        emitterMesh.position = new Vector3(0, 1.8, -5.5); // Position at back engines (positive Z for back)
         emitterMesh.isVisible = false;
         
         const particleSystem = new ParticleSystem('trail', 2000, this.scene);
@@ -238,65 +239,44 @@ export class Player {
         this.trail = particleSystem;
     }
 
-    public moveLeft(): void {
-        if (this.lane > -1) {
-            this.lane--;
-            this.targetX = this.lane * 3;
-            this.isMovingX = true;
-        }
-    }
-
-    public moveRight(): void {
-        if (this.lane < 1) {
-            this.lane++;
-            this.targetX = this.lane * 3;
-            this.isMovingX = true;
-        }
-    }
-
-    public moveUp(): void {
-        if (this.laneY < 1) {
-            this.laneY++;
-            this.targetY = 0.5 + (this.laneY * 2.5);
-            this.isMovingY = true;
-        }
-    }
-
-    public moveDown(): void {
-        if (this.laneY > -1) {
-            this.laneY--;
-            this.targetY = 0.5 + (this.laneY * 2.5);
-            this.isMovingY = true;
-        }
+    public setInput(x: number, y: number): void {
+        this.inputVector.set(x, y, 0);
     }
 
     public update(deltaTime: number): void {
-        if (this.isMovingX) {
-            const diff = this.targetX - this.mesh.position.x;
-            if (Math.abs(diff) < 0.1) {
-                this.mesh.position.x = this.targetX;
-                this.isMovingX = false;
-            } else {
-                this.mesh.position.x += diff * 0.15;
-            }
+        // Apply acceleration
+        if (this.inputVector.lengthSquared() > 0.1) {
+            this.velocity.x += this.inputVector.x * this.ACCELERATION * deltaTime;
+            this.velocity.y += this.inputVector.y * this.ACCELERATION * deltaTime;
         }
 
-        if (this.isMovingY) {
-            const diff = this.targetY - this.mesh.position.y;
-            if (Math.abs(diff) < 0.1) {
-                this.mesh.position.y = this.targetY;
-                this.isMovingY = false;
-            } else {
-                this.mesh.position.y += diff * 0.15;
-            }
+        // Apply drag
+        this.velocity.x -= this.velocity.x * this.DRAG * deltaTime;
+        this.velocity.y -= this.velocity.y * this.DRAG * deltaTime;
+
+        // Clamp velocity
+        if (this.velocity.length() > this.MAX_SPEED) {
+            this.velocity.normalize().scaleInPlace(this.MAX_SPEED);
         }
+
+        // Stop if very slow
+        if (this.velocity.lengthSquared() < 0.01) {
+            this.velocity.setAll(0);
+        }
+
+        // Apply velocity to position
+        this.mesh.position.addInPlace(this.velocity.scale(deltaTime));
+
+        // Clamp position
+        this.mesh.position.x = Scalar.Clamp(this.mesh.position.x, -8, 8);
+        this.mesh.position.y = Scalar.Clamp(this.mesh.position.y, 0.5, 6);
         
-        // Tilt ship based on movement
-        const targetRotationZ = (this.targetX - this.mesh.position.x) * 0.1;
-        const targetRotationX = Math.PI / 2 - (this.targetY - this.mesh.position.y) * 0.1;
+        // Tilt ship based on velocity
+        const targetRotationZ = -this.velocity.x * 0.05;
+        const targetRotationX = -this.velocity.y * 0.05;
         
-        this.mesh.rotation.z = targetRotationZ;
-        this.mesh.rotation.x = targetRotationX;
+        this.mesh.rotation.z = Scalar.Lerp(this.mesh.rotation.z, targetRotationZ, 5 * deltaTime);
+        this.mesh.rotation.x = Scalar.Lerp(this.mesh.rotation.x, targetRotationX, 5 * deltaTime);
     }
 
     public activateShield(): void {
@@ -331,12 +311,11 @@ export class Player {
     }
 
     public reset(): void {
-        this.lane = 0;
-        this.laneY = 0;
-        this.targetX = 0;
-        this.targetY = 0.5;
+        this.velocity.setAll(0);
+        this.inputVector.setAll(0);
         this.mesh.position.x = 0;
         this.mesh.position.y = 0.5;
+        this.mesh.rotation.setAll(0);
         this.shieldActive = false;
         if (this.shieldMesh) {
             this.shieldMesh.dispose();

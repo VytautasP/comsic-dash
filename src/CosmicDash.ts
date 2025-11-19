@@ -55,6 +55,7 @@ export class CosmicDash {
   private score = 0;
   private highScore = 0;
   private glowLayer: GlowLayer;
+  private inputMap: { [key: string]: boolean } = {};
 
   constructor(canvas: HTMLCanvasElement) {
     // Initialize Babylon.js engine
@@ -140,23 +141,18 @@ export class CosmicDash {
     this.scene.actionManager.registerAction(
       new ExecuteCodeAction(ActionManager.OnKeyDownTrigger, (evt) => {
         const key = evt.sourceEvent.key.toLowerCase();
+        this.inputMap[key] = true;
         
         if (key === ' ' || key === 'spacebar') {
             this.togglePause();
-            return;
         }
+      })
+    );
 
-        if (!this.gameRunning || this.isPaused) return;
-
-        if (key === 'arrowleft' || key === 'a') {
-            this.player.moveLeft();
-        } else if (key === 'arrowright' || key === 'd') {
-            this.player.moveRight();
-        } else if (key === 'arrowup' || key === 'w') {
-            this.player.moveUp();
-        } else if (key === 'arrowdown' || key === 's') {
-            this.player.moveDown();
-        }
+    this.scene.actionManager.registerAction(
+      new ExecuteCodeAction(ActionManager.OnKeyUpTrigger, (evt) => {
+        const key = evt.sourceEvent.key.toLowerCase();
+        this.inputMap[key] = false;
       })
     );
   }
@@ -281,6 +277,15 @@ export class CosmicDash {
   private update(): void {
     const deltaTime = this.engine.getDeltaTime() / 1000;
 
+    // Handle input
+    let inputX = 0;
+    let inputY = 0;
+    if (this.inputMap['arrowleft'] || this.inputMap['a']) inputX -= 1;
+    if (this.inputMap['arrowright'] || this.inputMap['d']) inputX += 1;
+    if (this.inputMap['arrowup'] || this.inputMap['w']) inputY += 1;
+    if (this.inputMap['arrowdown'] || this.inputMap['s']) inputY -= 1;
+
+    this.player.setInput(inputX, inputY);
     this.player.update(deltaTime);
     this.environment.update(deltaTime, this.gameSpeed, this.baseSpeed);
 
