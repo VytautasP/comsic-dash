@@ -236,7 +236,7 @@ export class Player {
 
         particleSystem.blendMode = ParticleSystem.BLENDMODE_ADD;
 
-        particleSystem.gravity = new Vector3(0, 0, -10); // Particles trail behind (positive Z)
+        particleSystem.gravity = new Vector3(0, 0, -25); // Particles trail behind (positive Z)
 
         particleSystem.direction1 = new Vector3(-0.2, 0, 1);
         particleSystem.direction2 = new Vector3(0.2, 0, 1);

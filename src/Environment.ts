@@ -1,4 +1,4 @@
-import { Scene, Vector3, Color3, Color4, MeshBuilder, StandardMaterial, ParticleSystem, Texture, Mesh, PhotoDome } from '@babylonjs/core';
+import { Scene, Vector3, Color3, Color4, MeshBuilder, StandardMaterial, ParticleSystem, Texture, Mesh, PhotoDome, SphereParticleEmitter } from '@babylonjs/core';
 
 export class Environment {
     private scene: Scene;
@@ -79,7 +79,7 @@ export class Environment {
     }
 
     private createStarfield(): void {
-        const starSystem = new ParticleSystem("stars", 2000, this.scene);
+        const starSystem = new ParticleSystem("stars", 4000, this.scene);
         starSystem.particleTexture = new Texture(
             'data:image/svg+xml;base64,' + btoa(
                 '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><circle cx="16" cy="16" r="16" fill="white"/></svg>'
@@ -88,22 +88,25 @@ export class Environment {
         );
 
         starSystem.emitter = Vector3.Zero();
-        // Large box around the player
-        starSystem.minEmitBox = new Vector3(-200, -100, -100);
-        starSystem.maxEmitBox = new Vector3(200, 100, 300);
+        
+        // Sphere emitter for 360 degree coverage
+        // Radius 600 with 0.6 range creates a thick shell from 240 to 600 units
+        // This keeps stars away from the immediate play area but gives depth
+        const starEmitter = new SphereParticleEmitter(600, 0.6);
+        starSystem.particleEmitterType = starEmitter;
 
         starSystem.color1 = new Color4(1, 1, 1, 1);
         starSystem.color2 = new Color4(0.8, 0.9, 1, 1); // Slight blue tint
         starSystem.colorDead = new Color4(0, 0, 0, 0);
 
-        starSystem.minSize = 0.1;
-        starSystem.maxSize = 0.5;
+        // Increased size for better visibility at distance
+        starSystem.minSize = 0.8;
+        starSystem.maxSize = 2.5;
 
         starSystem.minLifeTime = 9999;
         starSystem.maxLifeTime = 9999;
 
-        // Reduced count because the Skybox likely has background stars already
-        starSystem.manualEmitCount = 1000;
+        starSystem.manualEmitCount = 2000;
         starSystem.blendMode = ParticleSystem.BLENDMODE_STANDARD;
         starSystem.gravity = new Vector3(0, 0, 0);
         starSystem.start();
@@ -153,6 +156,7 @@ export class Environment {
     }
 
     private createWorld(): void {
+        //this.createTrackRings();
         
         // Create a subtle energy path instead of grid
         const path = MeshBuilder.CreateGround(
