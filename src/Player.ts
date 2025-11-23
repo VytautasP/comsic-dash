@@ -10,8 +10,17 @@ export class Player {
     private readonly ACCELERATION = 20;
     private readonly MAX_SPEED = 10;
     private readonly DRAG = 5;
+    
+    // Roll mechanics
+    private isRolling = false;
+    private rollTimer = 0;
+    private readonly ROLL_DURATION = 0.6;
+    private rollDirection = 0;
+    private rollStartRotation = 0;
+
     public shieldActive = false;
     private shieldMesh: Mesh | null = null;
+    private boundingRadius = 1.0;
 
     constructor(scene: Scene) {
         this.scene = scene;
@@ -45,6 +54,7 @@ export class Player {
                 this.mesh = playerMesh;
                 this.mesh.position = new Vector3(0, 0.5, -3);
                 
+                this.calculateBoundingRadius();
                 this.createParticleTrail(this.mesh);
                 return;
             }
@@ -55,6 +65,7 @@ export class Player {
         // Fallback to procedural model
         this.mesh.dispose();
         this.mesh = this.createProceduralModel();
+        this.calculateBoundingRadius();
     }
 
     private createProceduralModel(): Mesh {
@@ -243,6 +254,17 @@ export class Player {
         this.inputVector.set(x, y, 0);
     }
 
+    public barrelRoll(direction: number): void {
+        if (this.isRolling) return;
+        this.isRolling = true;
+        this.rollTimer = 0;
+        this.rollDirection = direction;
+        this.rollStartRotation = this.mesh.rotation.z;
+        
+        // Add a dodge impulse
+        this.velocity.x += direction * 18; 
+    }
+
     public update(deltaTime: number): void {
         // Apply acceleration
         if (this.inputVector.lengthSquared() > 0.1) {
@@ -268,9 +290,31 @@ export class Player {
         this.mesh.position.addInPlace(this.velocity.scale(deltaTime));
 
         // Clamp position
-        this.mesh.position.x = Scalar.Clamp(this.mesh.position.x, -8, 8);
-        this.mesh.position.y = Scalar.Clamp(this.mesh.position.y, 0.5, 6);
+        this.mesh.position.x = Scalar.Clamp(this.mesh.position.x, -10, 10);
+        this.mesh.position.y = Scalar.Clamp(this.mesh.position.y, -6, 6);
         
+        // Handle Rolling
+        if (this.isRolling) {
+            this.rollTimer += deltaTime;
+            const progress = this.rollTimer / this.ROLL_DURATION;
+            
+            if (progress >= 1) {
+                this.isRolling = false;
+                this.mesh.rotation.z = this.rollStartRotation;
+            } else {
+                // Roll 360 degrees (2PI)
+                // Left (-1) -> Positive Rotation
+                const rotationAmount = -this.rollDirection * Math.PI * 2 * progress;
+                this.mesh.rotation.z = this.rollStartRotation + rotationAmount;
+                
+                // Maintain X tilt
+                const targetRotationX = -this.velocity.y * 0.05;
+                this.mesh.rotation.x = Scalar.Lerp(this.mesh.rotation.x, targetRotationX, 5 * deltaTime);
+                
+                return; // Skip normal banking
+            }
+        }
+
         // Tilt ship based on velocity
         const targetRotationZ = -this.velocity.x * 0.05;
         const targetRotationX = -this.velocity.y * 0.05;
@@ -284,9 +328,22 @@ export class Player {
             this.shieldMesh.dispose();
         }
 
+        const boundingInfo = this.mesh.getHierarchyBoundingVectors(true);
+        const min = boundingInfo.min;
+        const max = boundingInfo.max;
+    
+        // Calculate the maximum extent from center
+        const extentX = Math.max(Math.abs(min.x), Math.abs(max.x));
+        const extentY = Math.max(Math.abs(min.y), Math.abs(max.y));
+        const extentZ = Math.max(Math.abs(min.z), Math.abs(max.z));
+    
+        // Get the largest dimension and add some padding (20% extra)
+        const maxExtent = Math.max(extentX, extentY, extentZ);
+        const shieldDiameter = maxExtent * 2 * 1.2; // 1.2 = 20% padding
+
         this.shieldMesh = MeshBuilder.CreateSphere(
             'shield',
-            { diameter: 2 },
+            { diameter: shieldDiameter, segments: 32 },
             this.scene
         );
         this.shieldMesh.parent = this.mesh;
@@ -325,5 +382,23 @@ export class Player {
     
     public getPosition(): Vector3 {
         return this.mesh.position;
+    }
+
+    public getBoundingRadius(): number {
+        return this.boundingRadius;
+    }
+
+    private calculateBoundingRadius(): void {
+        const boundingInfo = this.mesh.getHierarchyBoundingVectors(true);
+        const min = boundingInfo.min;
+        const max = boundingInfo.max;
+        
+        // Calculate size in each dimension
+        const sizeX = Math.abs(max.x - min.x);
+        const sizeY = Math.abs(max.y - min.y);
+        const sizeZ = Math.abs(max.z - min.z);
+        
+        // Use half of the largest dimension as radius
+        this.boundingRadius = Math.max(sizeX, sizeY, sizeZ) / 2;
     }
 }

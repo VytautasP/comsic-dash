@@ -56,15 +56,16 @@ export class CosmicDash {
   private highScore = 0;
   private glowLayer: GlowLayer;
   private inputMap: { [key: string]: boolean } = {};
+  private keyPressTimes: { [key: string]: number } = {};
 
   constructor(canvas: HTMLCanvasElement) {
     // Initialize Babylon.js engine
     this.engine = new Engine(canvas, true);
     this.scene = new Scene(this.engine);
-    this.scene.clearColor = new Color4(0.0, 0.0, 0.02, 1); // Deep space
+    this.scene.clearColor = new Color4(0.1, 0.05, 0.2, 1); // Deep purple space
     this.scene.fogMode = Scene.FOGMODE_EXP2;
-    this.scene.fogDensity = 0.015;
-    this.scene.fogColor = new Color3(0.0, 0.0, 0.02);
+    this.scene.fogDensity = 0.008; // Reduced fog for depth
+    this.scene.fogColor = new Color3(0.2, 0.1, 0.3); // Purple fog
 
     // Setup camera
     this.camera = new ArcRotateCamera(
@@ -81,20 +82,26 @@ export class CosmicDash {
 
     // Add glow effect
     this.glowLayer = new GlowLayer('glow', this.scene);
-    this.glowLayer.intensity = 0.8; // Stronger glow
+    this.glowLayer.intensity = 1.2; // Stronger glow for neon look
 
     // Setup lighting
     const light = new HemisphericLight('light', new Vector3(0, 1, 0), this.scene);
-    light.intensity = 0.3; // Darker ambient
+    light.intensity = 0.5;
+    light.groundColor = new Color3(0.2, 0.1, 0.3); // Purple ambient from below
+
+    // Add a bright star/sun ahead
+    const sunLight = new PointLight('sunLight', new Vector3(0, 20, 100), this.scene);
+    sunLight.diffuse = new Color3(1, 0.9, 0.8);
+    sunLight.intensity = 2.0;
 
     // Add some colored point lights for atmosphere
-    const leftLight = new PointLight('leftLight', new Vector3(-10, 5, 10), this.scene);
-    leftLight.diffuse = new Color3(0, 0.5, 1);
-    leftLight.intensity = 0.8;
+    const leftLight = new PointLight('leftLight', new Vector3(-20, 10, 20), this.scene);
+    leftLight.diffuse = new Color3(0, 0.8, 1); // Cyan
+    leftLight.intensity = 1.0;
 
-    const rightLight = new PointLight('rightLight', new Vector3(10, 5, 10), this.scene);
-    rightLight.diffuse = new Color3(1, 0, 0.5);
-    rightLight.intensity = 0.8;
+    const rightLight = new PointLight('rightLight', new Vector3(20, 10, 20), this.scene);
+    rightLight.diffuse = new Color3(1, 0, 0.8); // Magenta
+    rightLight.intensity = 1.0;
 
     // Initialize Managers
     this.environment = new Environment(this.scene);
@@ -141,6 +148,9 @@ export class CosmicDash {
     this.scene.actionManager.registerAction(
       new ExecuteCodeAction(ActionManager.OnKeyDownTrigger, (evt) => {
         const key = evt.sourceEvent.key.toLowerCase();
+        if (!this.inputMap[key]) {
+             this.keyPressTimes[key] = Date.now();
+        }
         this.inputMap[key] = true;
         
         if (key === ' ' || key === 'spacebar') {
@@ -153,6 +163,15 @@ export class CosmicDash {
       new ExecuteCodeAction(ActionManager.OnKeyUpTrigger, (evt) => {
         const key = evt.sourceEvent.key.toLowerCase();
         this.inputMap[key] = false;
+
+        const pressDuration = Date.now() - (this.keyPressTimes[key] || 0);
+        if (pressDuration < 100 && this.gameRunning && !this.isPaused) {
+            if (key === 'arrowleft' || key === 'a') {
+                this.player.barrelRoll(-1);
+            } else if (key === 'arrowright' || key === 'd') {
+                this.player.barrelRoll(1);
+            }
+        }
       })
     );
   }
@@ -325,7 +344,11 @@ export class CosmicDash {
       // Check collision with player
       if (obs.mesh.position.z < -2 && obs.mesh.position.z > -5) {
         const distance = Vector3.Distance(obs.mesh.position, this.player.getPosition());
-        if (distance < 1.5) { // Increased collision radius slightly for Y axis
+        const playerRadius = this.player.getBoundingRadius();
+        const obstacleRadius = 0.6; // Half of obstacle size (1.2 * 0.5)
+        const collisionDistance = playerRadius + obstacleRadius;
+        
+        if (distance < collisionDistance) {
           if (this.player.shieldActive) {
             // Shield absorbs hit
             obs.mesh.dispose();
@@ -360,7 +383,11 @@ export class CosmicDash {
       // Check collection
       if (col.mesh.position.z < -2 && col.mesh.position.z > -5) {
         const distance = Vector3.Distance(col.mesh.position, this.player.getPosition());
-        if (distance < 1.5) {
+        const playerRadius = this.player.getBoundingRadius();
+        const collectibleRadius = 0.4; // Half of collectible diameter (0.8 * 0.5)
+        const collectionDistance = playerRadius + collectibleRadius;
+        
+        if (distance < collectionDistance) {
           if (col.type === 'points') {
             this.score += 100;
           } else {

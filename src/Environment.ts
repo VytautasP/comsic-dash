@@ -9,6 +9,7 @@ export class Environment {
     }
 
     public create(): void {
+        this.createNebula();
         this.createStarfield();
         this.createSpaceDust();
         this.createWorld();
@@ -40,8 +41,39 @@ export class Environment {
         }
     }
 
+    private createNebula(): void {
+        const nebulaSystem = new ParticleSystem("nebula", 200, this.scene);
+        nebulaSystem.particleTexture = new Texture(
+            'data:image/svg+xml;base64,' + btoa(
+                '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><defs><radialGradient id="g"><stop offset="0%" stop-color="white" stop-opacity="1"/><stop offset="100%" stop-color="white" stop-opacity="0"/></radialGradient></defs><circle cx="32" cy="32" r="32" fill="url(#g)"/></svg>'
+            ),
+            this.scene
+        );
+
+        nebulaSystem.emitter = Vector3.Zero();
+        nebulaSystem.minEmitBox = new Vector3(-100, -50, 0);
+        nebulaSystem.maxEmitBox = new Vector3(100, 50, 300);
+
+        // Deep purple/blue/pink colors
+        nebulaSystem.color1 = new Color4(0.2, 0.0, 0.4, 0.2); // Purple
+        nebulaSystem.color2 = new Color4(0.0, 0.2, 0.5, 0.2); // Blue
+        nebulaSystem.colorDead = new Color4(0, 0, 0, 0);
+
+        nebulaSystem.minSize = 40.0;
+        nebulaSystem.maxSize = 100.0;
+
+        nebulaSystem.minLifeTime = 9999;
+        nebulaSystem.maxLifeTime = 9999;
+
+        nebulaSystem.manualEmitCount = 150;
+        nebulaSystem.blendMode = ParticleSystem.BLENDMODE_ADD;
+        nebulaSystem.gravity = new Vector3(0, 0, 0);
+        
+        nebulaSystem.start();
+    }
+
     private createStarfield(): void {
-        const starSystem = new ParticleSystem("stars", 4000, this.scene);
+        const starSystem = new ParticleSystem("stars", 5000, this.scene);
         starSystem.particleTexture = new Texture(
             'data:image/svg+xml;base64,' + btoa(
                 '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><circle cx="16" cy="16" r="16" fill="white"/></svg>'
@@ -55,16 +87,16 @@ export class Environment {
         starSystem.maxEmitBox = new Vector3(200, 100, 300);
 
         starSystem.color1 = new Color4(1, 1, 1, 1);
-        starSystem.color2 = new Color4(0.6, 0.8, 1, 1);
+        starSystem.color2 = new Color4(0.8, 0.9, 1, 1); // Slight blue tint
         starSystem.colorDead = new Color4(0, 0, 0, 0);
 
         starSystem.minSize = 0.1;
-        starSystem.maxSize = 0.4;
+        starSystem.maxSize = 0.5;
 
         starSystem.minLifeTime = 9999;
         starSystem.maxLifeTime = 9999;
 
-        starSystem.manualEmitCount = 3000;
+        starSystem.manualEmitCount = 4000;
         starSystem.blendMode = ParticleSystem.BLENDMODE_STANDARD;
         starSystem.gravity = new Vector3(0, 0, 0);
         starSystem.start();
@@ -118,7 +150,7 @@ export class Environment {
         for (let i = 0; i < 15; i++) {
             const ring = MeshBuilder.CreateTorus(
                 `ring${i}`,
-                { diameter: 25, thickness: 0.8, tessellation: 64 },
+                { diameter: 25, thickness: 0.5, tessellation: 64 },
                 this.scene
             );
             ring.position.z = i * 15 - 10;
@@ -126,10 +158,10 @@ export class Environment {
             ring.rotation.x = Math.PI / 2;
 
             const material = new StandardMaterial(`ringMat${i}`, this.scene);
-            material.emissiveColor = new Color3(0, 0.4, 0.8);
+            material.emissiveColor = new Color3(0, 1, 1); // Cyan neon
             material.diffuseColor = new Color3(0, 0, 0);
             material.specularColor = new Color3(1, 1, 1);
-            material.alpha = 0.3;
+            material.alpha = 0.6;
             ring.material = material;
         }
 
@@ -144,17 +176,18 @@ export class Environment {
 
         const pathMat = new StandardMaterial('pathMat', this.scene);
         pathMat.diffuseColor = new Color3(0, 0, 0);
-        pathMat.emissiveColor = new Color3(0, 0.1, 0.2);
-        pathMat.alpha = 0.1;
+        pathMat.emissiveColor = new Color3(1, 0, 1); // Magenta
+        pathMat.alpha = 0.2;
         pathMat.wireframe = true;
         path.material = pathMat;
 
         // Add some distant planets/moons
-        const planet = MeshBuilder.CreateSphere("planet", { diameter: 40 }, this.scene);
-        planet.position = new Vector3(60, 20, 150);
+        const planet = MeshBuilder.CreateSphere("planet", { diameter: 60 }, this.scene);
+        planet.position = new Vector3(80, 30, 200);
         const planetMat = new StandardMaterial("planetMat", this.scene);
-        planetMat.emissiveColor = new Color3(0.1, 0, 0.2);
-        planetMat.diffuseColor = new Color3(0.2, 0.1, 0.4);
+        planetMat.emissiveColor = new Color3(0.05, 0, 0.1);
+        planetMat.diffuseColor = new Color3(0.1, 0, 0.2);
+        planetMat.specularColor = new Color3(0, 0, 0);
         planet.material = planetMat;
     }
 }
