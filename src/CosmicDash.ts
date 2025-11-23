@@ -417,6 +417,18 @@ export class CosmicDash {
     // Increase difficulty over time
     this.gameSpeed = this.baseSpeed + (this.score / 1000) * 0.1;
 
+    // Dynamic FOV for speed sensation
+    // Base FOV is roughly 0.8. We widen it as speed increases.
+    const targetFOV = 0.8 + (this.gameSpeed * 0.8); 
+    this.camera.fov = Scalar.Lerp(this.camera.fov, targetFOV, 2.0 * deltaTime);
+
+    // Subtle Camera Shake at high speeds
+    if (this.gameSpeed > 0.4) {
+        const shakeIntensity = (this.gameSpeed - 0.4) * 0.05;
+        this.camera.target.x += (Math.random() - 0.5) * shakeIntensity;
+        this.camera.target.y += (Math.random() - 0.5) * shakeIntensity;
+    }
+
     // Update score
     this.score += deltaTime * 10;
     this.uiManager.updateScore(this.score);

@@ -113,7 +113,7 @@ export class Environment {
     }
 
     private createSpaceDust(): void {
-        const dustSystem = new ParticleSystem("dust", 2000, this.scene);
+        const dustSystem = new ParticleSystem("dust", 5000, this.scene);
         dustSystem.particleTexture = new Texture(
             'data:image/svg+xml;base64,' + btoa(
                 '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><circle cx="16" cy="16" r="16" fill="white"/></svg>'
@@ -123,32 +123,35 @@ export class Environment {
 
         // Emit from far ahead
         const dustEmitter = new Mesh("dustEmitter", this.scene);
-        dustEmitter.position = new Vector3(0, 0, 100);
+        dustEmitter.position = new Vector3(0, 0, 150);
         dustEmitter.isVisible = false;
         dustSystem.emitter = dustEmitter;
 
-        dustSystem.minEmitBox = new Vector3(-30, -20, 0);
-        dustSystem.maxEmitBox = new Vector3(30, 20, 50);
+        dustSystem.minEmitBox = new Vector3(-50, -40, 0);
+        dustSystem.maxEmitBox = new Vector3(150, 100, 100);
 
-        dustSystem.color1 = new Color4(1, 1, 1, 0.3);
-        dustSystem.color2 = new Color4(0.5, 0.8, 1, 0.1);
+        dustSystem.color1 = new Color4(1, 1, 1, 0.5);
+        dustSystem.color2 = new Color4(0.5, 0.8, 1, 0.2);
         dustSystem.colorDead = new Color4(0, 0, 0, 0);
 
-        dustSystem.minSize = 0.05;
-        dustSystem.maxSize = 0.2;
+        dustSystem.minSize = 0.1;
+        dustSystem.maxSize = 0.4;
 
-        dustSystem.minLifeTime = 1.5;
-        dustSystem.maxLifeTime = 3;
+        dustSystem.minLifeTime = 2.5;
+        dustSystem.maxLifeTime = 4.5;
 
-        dustSystem.emitRate = 300;
+        dustSystem.emitRate = 1500;
         dustSystem.blendMode = ParticleSystem.BLENDMODE_ADD;
+        
+        // Stretch particles to look like warp lines
+        dustSystem.billboardMode = ParticleSystem.BILLBOARDMODE_STRETCHED;
 
         // Move towards player (negative Z)
         dustSystem.gravity = new Vector3(0, 0, 0);
         dustSystem.direction1 = new Vector3(0, 0, -1);
         dustSystem.direction2 = new Vector3(0, 0, -1);
-        dustSystem.minEmitPower = 30;
-        dustSystem.maxEmitPower = 60;
+        dustSystem.minEmitPower = 60;
+        dustSystem.maxEmitPower = 100;
         dustSystem.updateSpeed = 0.01;
 
         dustSystem.start();
