@@ -3,6 +3,8 @@ import { Scene, Vector3, Color3, Color4, MeshBuilder, StandardMaterial, Particle
 export class Environment {
     private scene: Scene;
     private spaceDustSystem: ParticleSystem | null = null;
+    private spaceDustNormal: Texture | null = null;
+    private spaceDustStreak: Texture | null = null;
 
     constructor(scene: Scene) {
         this.scene = scene;
@@ -11,7 +13,7 @@ export class Environment {
     public create(): void {
         // 1. Create the static background (The "Picture")
         this.createSkybox();
-        
+        this.loadSpaceDustTextures();
         // 2. Add depth layers
         this.createStarfield(); // Foreground stars for parallax
         this.createSpaceDust(); // Speed sensation
@@ -40,8 +42,59 @@ export class Environment {
 
         // Update space dust speed
         if (this.spaceDustSystem) {
-            this.spaceDustSystem.updateSpeed = 0.01 * (gameSpeed / baseSpeed);
+            const speedRatio = gameSpeed / baseSpeed;
+            this.spaceDustSystem.updateSpeed = 0.01 * speedRatio;
+            
+            // Increase emit rate when boosting (speedRatio > 1.5 means boosting roughly)
+            if (speedRatio > 1.5) {
+                // Switch to streak texture
+                if (this.spaceDustStreak && this.spaceDustSystem.particleTexture !== this.spaceDustStreak) {
+                    this.spaceDustSystem.particleTexture = this.spaceDustStreak;
+                }
+
+                this.spaceDustSystem.emitRate = 5000; 
+                this.spaceDustSystem.minSize = 0.5;   // Longer streaks (due to texture aspect ratio)
+                this.spaceDustSystem.maxSize = 1.5;
+                this.spaceDustSystem.minEmitPower = 100; // Move faster to stretch more
+                this.spaceDustSystem.maxEmitPower = 200;
+            } else {
+                // Switch to normal texture
+                if (this.spaceDustNormal && this.spaceDustSystem.particleTexture !== this.spaceDustNormal) {
+                    this.spaceDustSystem.particleTexture = this.spaceDustNormal;
+                }
+
+                this.spaceDustSystem.emitRate = 1500; 
+                this.spaceDustSystem.minSize = 0.1;
+                this.spaceDustSystem.maxSize = 0.4;
+                this.spaceDustSystem.minEmitPower = 60;
+                this.spaceDustSystem.maxEmitPower = 100;
+            }
         }
+    }
+
+    private loadSpaceDustTextures(): void {
+        // Normal dust (circle)
+        this.spaceDustNormal = new Texture(
+            'data:image/svg+xml;base64,' + btoa(
+                '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><circle cx="16" cy="16" r="16" fill="white"/></svg>'
+            ),
+            this.scene
+        );
+
+        // Streak dust (line with gradient)
+        this.spaceDustStreak = new Texture(
+            'data:image/svg+xml;base64,' + btoa(
+                '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="256">' +
+                '<defs><linearGradient id="grad" x1="0%" y1="0%" x2="0%" y2="100%">' +
+                '<stop offset="0%" style="stop-color:white;stop-opacity:0" />' +
+                '<stop offset="50%" style="stop-color:white;stop-opacity:1" />' +
+                '<stop offset="100%" style="stop-color:white;stop-opacity:0" />' +
+                '</linearGradient></defs>' +
+                '<rect x="24" y="0" width="16" height="256" fill="url(#grad)"/>' +
+                '</svg>'
+            ),
+            this.scene
+        );
     }
 
     private createSkybox(): void {
@@ -114,12 +167,11 @@ export class Environment {
 
     private createSpaceDust(): void {
         const dustSystem = new ParticleSystem("dust", 5000, this.scene);
-        dustSystem.particleTexture = new Texture(
-            'data:image/svg+xml;base64,' + btoa(
-                '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><circle cx="16" cy="16" r="16" fill="white"/></svg>'
-            ),
-            this.scene
-        );
+        
+        // Start with normal texture
+        if (this.spaceDustNormal) {
+            dustSystem.particleTexture = this.spaceDustNormal;
+        }
 
         // Emit from far ahead
         const dustEmitter = new Mesh("dustEmitter", this.scene);
