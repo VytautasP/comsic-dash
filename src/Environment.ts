@@ -1,4 +1,4 @@
-import { Scene, Vector3, Color3, Color4, MeshBuilder, StandardMaterial, ParticleSystem, Texture, Mesh } from '@babylonjs/core';
+import { Scene, Vector3, Color3, Color4, MeshBuilder, StandardMaterial, ParticleSystem, Texture, Mesh, PhotoDome } from '@babylonjs/core';
 
 export class Environment {
     private scene: Scene;
@@ -9,10 +9,13 @@ export class Environment {
     }
 
     public create(): void {
-        this.createNebula();
-        this.createStarfield();
-        this.createSpaceDust();
-        this.createWorld();
+        // 1. Create the static background (The "Picture")
+        this.createSkybox();
+        
+        // 2. Add depth layers
+        this.createStarfield(); // Foreground stars for parallax
+        this.createSpaceDust(); // Speed sensation
+        this.createWorld();     // Game objects
     }
 
     public update(deltaTime: number, gameSpeed: number, baseSpeed: number): void {
@@ -41,39 +44,42 @@ export class Environment {
         }
     }
 
-    private createNebula(): void {
-        const nebulaSystem = new ParticleSystem("nebula", 200, this.scene);
-        nebulaSystem.particleTexture = new Texture(
-            'data:image/svg+xml;base64,' + btoa(
-                '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><defs><radialGradient id="g"><stop offset="0%" stop-color="white" stop-opacity="1"/><stop offset="100%" stop-color="white" stop-opacity="0"/></radialGradient></defs><circle cx="32" cy="32" r="32" fill="url(#g)"/></svg>'
-            ),
-            this.scene
+    private createSkybox(): void {
+        // A PhotoDome uses a single 360-degree image to wrap the scene.
+        // This is the most efficient way to get the "Concept Art" look.
+        // Ensure you have a file at 'textures/space_environment.png'
+        const dome = new PhotoDome(
+            "spaceDome",
+            "textures/space_environment.png", 
+            {
+                resolution: 64,
+                size: 3000,
+                useDirectMapping: false
+            },
+            this.scene,
+            (message) => {
+                console.error("Error loading PhotoDome texture:", message);
+            }
         );
-
-        nebulaSystem.emitter = Vector3.Zero();
-        nebulaSystem.minEmitBox = new Vector3(-100, -50, 0);
-        nebulaSystem.maxEmitBox = new Vector3(100, 50, 300);
-
-        // Deep purple/blue/pink colors
-        nebulaSystem.color1 = new Color4(0.2, 0.0, 0.4, 0.2); // Purple
-        nebulaSystem.color2 = new Color4(0.0, 0.2, 0.5, 0.2); // Blue
-        nebulaSystem.colorDead = new Color4(0, 0, 0, 0);
-
-        nebulaSystem.minSize = 40.0;
-        nebulaSystem.maxSize = 100.0;
-
-        nebulaSystem.minLifeTime = 9999;
-        nebulaSystem.maxLifeTime = 9999;
-
-        nebulaSystem.manualEmitCount = 150;
-        nebulaSystem.blendMode = ParticleSystem.BLENDMODE_ADD;
-        nebulaSystem.gravity = new Vector3(0, 0, 0);
         
-        nebulaSystem.start();
+        // Adjust rotation to put the best part of the nebula in front of the player
+        dome.mesh.rotation.y = 1.5 * Math.PI; 
+        
+        // Disable fog on the skybox so it's always visible
+        if (dome.mesh.material) {
+            dome.mesh.material.fogEnabled = false;
+        }
+
+        // Add an observable to check when the texture is ready
+        dome.onReady = () => {
+            console.log("PhotoDome texture loaded successfully!");
+        };
+
+        dome.fovMultiplier = 2.0;
     }
 
     private createStarfield(): void {
-        const starSystem = new ParticleSystem("stars", 5000, this.scene);
+        const starSystem = new ParticleSystem("stars", 2000, this.scene);
         starSystem.particleTexture = new Texture(
             'data:image/svg+xml;base64,' + btoa(
                 '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><circle cx="16" cy="16" r="16" fill="white"/></svg>'
@@ -96,7 +102,8 @@ export class Environment {
         starSystem.minLifeTime = 9999;
         starSystem.maxLifeTime = 9999;
 
-        starSystem.manualEmitCount = 4000;
+        // Reduced count because the Skybox likely has background stars already
+        starSystem.manualEmitCount = 1000;
         starSystem.blendMode = ParticleSystem.BLENDMODE_STANDARD;
         starSystem.gravity = new Vector3(0, 0, 0);
         starSystem.start();
@@ -146,25 +153,7 @@ export class Environment {
     }
 
     private createWorld(): void {
-        // Create large glowing rings/gates
-        for (let i = 0; i < 15; i++) {
-            const ring = MeshBuilder.CreateTorus(
-                `ring${i}`,
-                { diameter: 25, thickness: 0.5, tessellation: 64 },
-                this.scene
-            );
-            ring.position.z = i * 15 - 10;
-            // Rotate to be vertical gates
-            ring.rotation.x = Math.PI / 2;
-
-            const material = new StandardMaterial(`ringMat${i}`, this.scene);
-            material.emissiveColor = new Color3(0, 1, 1); // Cyan neon
-            material.diffuseColor = new Color3(0, 0, 0);
-            material.specularColor = new Color3(1, 1, 1);
-            material.alpha = 0.6;
-            ring.material = material;
-        }
-
+        
         // Create a subtle energy path instead of grid
         const path = MeshBuilder.CreateGround(
             'ground',
@@ -190,4 +179,27 @@ export class Environment {
         planetMat.specularColor = new Color3(0, 0, 0);
         planet.material = planetMat;
     }
+
+    private createTrackRings(): void {
+
+    // Create large glowing rings/gates
+        for (let i = 0; i < 15; i++) {
+            const ring = MeshBuilder.CreateTorus(
+                `ring${i}`,
+                { diameter: 25, thickness: 0.5, tessellation: 64 },
+                this.scene
+            );
+            ring.position.z = i * 15 - 10;
+            // Rotate to be vertical gates
+            ring.rotation.x = Math.PI / 2;
+
+            const material = new StandardMaterial(`ringMat${i}`, this.scene);
+            material.emissiveColor = new Color3(0, 1, 1); // Cyan neon
+            material.diffuseColor = new Color3(0, 0, 0);
+            material.specularColor = new Color3(1, 1, 1);
+            material.alpha = 0.6;
+            ring.material = material;
+        }
+    }
+
 }
