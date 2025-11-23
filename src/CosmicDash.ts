@@ -16,6 +16,7 @@ import {
   SphereParticleEmitter,
   PointLight,
   GlowLayer,
+  Scalar,
 } from '@babylonjs/core';
 import '@babylonjs/loaders/glTF';
 import { Environment } from './Environment';
@@ -70,15 +71,15 @@ export class CosmicDash {
     // Setup camera
     this.camera = new ArcRotateCamera(
       'camera',
-      0,
-      Math.PI / 3, // Lower angle for more dramatic view
-      12,
-      new Vector3(0, 0, 5), // Look slightly ahead
+      -Math.PI / 2, // -PI/2 places camera behind the player (on -Z axis)
+      Math.PI / 3, 
+      15, // Increased distance
+      new Vector3(0, 0, 0), 
       this.scene
     );
     this.camera.attachControl(canvas, false);
-    this.camera.lowerRadiusLimit = 8;
-    this.camera.upperRadiusLimit = 20;
+    this.camera.lowerRadiusLimit = 10;
+    this.camera.upperRadiusLimit = 40;
 
     // Add glow effect
     this.glowLayer = new GlowLayer('glow', this.scene);
@@ -307,6 +308,14 @@ export class CosmicDash {
     this.player.setInput(inputX, inputY);
     this.player.update(deltaTime);
     this.environment.update(deltaTime, this.gameSpeed, this.baseSpeed);
+
+    // Camera follow logic
+    const playerPos = this.player.getPosition();
+    // Smoothly interpolate camera target to player's X position
+    // We keep Z and Y relatively static to avoid motion sickness, but follow X for lane changes
+    this.camera.target.x = Scalar.Lerp(this.camera.target.x, playerPos.x, 5 * deltaTime);
+    this.camera.target.y = Scalar.Lerp(this.camera.target.y, playerPos.y + 2, 5 * deltaTime); // Look slightly above player
+    this.camera.target.z = playerPos.z + 5; // Look ahead of the player
 
     // Spawn obstacles
     this.spawnTimer += deltaTime;
