@@ -314,8 +314,8 @@ export class CosmicDash {
     // Smoothly interpolate camera target to player's X position
     // We keep Z and Y relatively static to avoid motion sickness, but follow X for lane changes
     this.camera.target.x = Scalar.Lerp(this.camera.target.x, playerPos.x, 5 * deltaTime);
-    this.camera.target.y = Scalar.Lerp(this.camera.target.y, playerPos.y + 2, 5 * deltaTime); // Look slightly above player
-    this.camera.target.z = playerPos.z + 5; // Look ahead of the player
+    this.camera.target.y = Scalar.Lerp(this.camera.target.y, playerPos.y, 5 * deltaTime); // Look at player center
+    this.camera.target.z = playerPos.z; // Look at player center
 
     // Spawn obstacles
     this.spawnTimer += deltaTime;

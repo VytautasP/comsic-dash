@@ -92,7 +92,7 @@ export class Environment {
         // Sphere emitter for 360 degree coverage
         // Radius 600 with 0.6 range creates a thick shell from 240 to 600 units
         // This keeps stars away from the immediate play area but gives depth
-        const starEmitter = new SphereParticleEmitter(600, 0.6);
+        const starEmitter = new SphereParticleEmitter(2500, 0.6);
         starSystem.particleEmitterType = starEmitter;
 
         starSystem.color1 = new Color4(1, 1, 1, 1);
@@ -100,8 +100,8 @@ export class Environment {
         starSystem.colorDead = new Color4(0, 0, 0, 0);
 
         // Increased size for better visibility at distance
-        starSystem.minSize = 0.8;
-        starSystem.maxSize = 2.5;
+        starSystem.minSize = 2.8;
+        starSystem.maxSize = 5.5;
 
         starSystem.minLifeTime = 9999;
         starSystem.maxLifeTime = 9999;
