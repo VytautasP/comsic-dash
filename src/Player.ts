@@ -250,6 +250,24 @@ export class Player {
         this.trail = particleSystem;
     }
 
+    public setBoost(enabled: boolean): void {
+        if (this.trail) {
+            if (enabled) {
+                this.trail.emitRate = 2000;
+                this.trail.minSize = 0.2;
+                this.trail.maxSize = 0.5;
+                this.trail.color1 = new Color4(1, 0.5, 0, 1); // Orange/Red boost
+                this.trail.color2 = new Color4(1, 0, 0, 1);
+            } else {
+                this.trail.emitRate = 500;
+                this.trail.minSize = 0.1;
+                this.trail.maxSize = 0.3;
+                this.trail.color1 = new Color4(0, 1, 1, 1); // Cyan normal
+                this.trail.color2 = new Color4(0, 0.5, 1, 1);
+            }
+        }
+    }
+
     public setInput(x: number, y: number): void {
         this.inputVector.set(x, y, 0);
     }

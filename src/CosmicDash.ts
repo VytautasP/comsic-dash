@@ -154,7 +154,7 @@ export class CosmicDash {
         }
         this.inputMap[key] = true;
         
-        if (key === ' ' || key === 'spacebar') {
+        if (key === 'p') {
             this.togglePause();
         }
       })
@@ -307,6 +307,18 @@ export class CosmicDash {
 
     this.player.setInput(inputX, inputY);
     this.player.update(deltaTime);
+
+    // Handle Boost
+    let isBoosting = false;
+    if (this.inputMap[' '] || this.inputMap['spacebar']) {
+        isBoosting = true;
+    }
+    this.player.setBoost(isBoosting);
+
+    // Calculate Game Speed
+    const scoreSpeed = this.baseSpeed + (this.score / 1000) * 0.1;
+    this.gameSpeed = isBoosting ? scoreSpeed * 2.5 : scoreSpeed;
+
     this.environment.update(deltaTime, this.gameSpeed, this.baseSpeed);
 
     // Camera follow logic
@@ -347,7 +359,8 @@ export class CosmicDash {
         obs.mesh.position.y = originalY + Math.cos(obs.time * 2) * 0.5;
       }
 
-      obs.mesh.position.z -= obs.speed * 60 * deltaTime;
+      // Use this.gameSpeed instead of obs.speed to reflect player speed changes immediately
+      obs.mesh.position.z -= this.gameSpeed * 60 * deltaTime;
       obs.mesh.rotation.y += deltaTime * 2;
 
       // Check collision with player
@@ -415,7 +428,8 @@ export class CosmicDash {
     }
 
     // Increase difficulty over time
-    this.gameSpeed = this.baseSpeed + (this.score / 1000) * 0.1;
+    // this.gameSpeed is now calculated earlier in the loop
+    // this.gameSpeed = this.baseSpeed + (this.score / 1000) * 0.1;
 
     // Dynamic FOV for speed sensation
     // Base FOV is roughly 0.8. We widen it as speed increases.
