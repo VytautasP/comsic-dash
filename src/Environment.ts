@@ -1,4 +1,4 @@
-import { Scene, Vector3, Color3, Color4, MeshBuilder, StandardMaterial, ParticleSystem, Texture, Mesh, PhotoDome, SphereParticleEmitter, SceneLoader, AbstractMesh } from '@babylonjs/core';
+import { Scene, Vector3, Color3, Color4, MeshBuilder, StandardMaterial, ParticleSystem, Texture, Mesh, PhotoDome, SphereParticleEmitter, SceneLoader, AbstractMesh, Quaternion, Space, TransformNode, AxesViewer } from '@babylonjs/core';
 import '@babylonjs/loaders/glTF';
 import '@babylonjs/loaders/glTF/2.0/Extensions/KHR_materials_pbrSpecularGlossiness';
 
@@ -8,6 +8,8 @@ export class Environment {
     private spaceDustNormal: Texture | null = null;
     private spaceDustStreak: Texture | null = null;
     private planet: AbstractMesh | null = null;
+
+    private planetSpinAxis: TransformNode | null = null;
 
     constructor(scene: Scene) {
         this.scene = scene;
@@ -75,9 +77,9 @@ export class Environment {
         }
 
         // Rotate planet
-        // if (this.planet) {
-        //     this.planet.rotation.y += deltaTime * 0.05;
-        // }
+        if (this.planet) {
+            this.planetSpinAxis!.rotate(Vector3.Up(), deltaTime * 0.005, Space.LOCAL);
+        }
     }
 
     private loadSpaceDustTextures(): void {
@@ -245,6 +247,11 @@ export class Environment {
         const modelPath = '/models/planet/';
         const modelFile = 'scene.gltf';
 
+        // Create the spin axis transform node first
+        this.planetSpinAxis = new TransformNode("planetSpinAxis", this.scene);
+        this.planetSpinAxis.position = new Vector3(66.98295593261719, 36.99456024169922, 122.33858489990234);
+        this.planetSpinAxis.rotationQuaternion = new Quaternion(-0.05050054691316438, -0.9618297478723448, 0.2648289311803674, 0.04689208972756507);
+
         // Add some distant planets/moons
         SceneLoader.ImportMesh(
             "",
@@ -269,13 +276,21 @@ export class Environment {
                 // 60 / 4000 = 0.015. Let's try 0.02
                 const scale = 0.06;
                 root.scaling = new Vector3(scale, scale, scale);
-                root.position = new Vector3(80, 30, 200);
                 
                 // Clear rotation quaternion to allow Euler rotation
-                root.rotationQuaternion = null;
+                //root.rotationQuaternion = new Quaternion(0.9987423330849309,-0.037716609292496775,0.03303124466768622,0.0003825745021156122);
                 root.rotation = new Vector3(Math.PI / 20, Math.PI , 0);
 
                 this.planet = root;
+
+                // Parent the planet to the spin axis (after it's loaded)
+                if (this.planetSpinAxis) {
+                    this.planet.parent = this.planetSpinAxis;
+                    this.planet.position = Vector3.Zero();
+                    new AxesViewer(this.scene, 10).xAxis.parent = this.planetSpinAxis;
+                    this.planet.rotation = new Vector3(-0.2916225081925105, 2.2325818092704317, -0.2842463635966254);
+
+                }
 
                 // Fix materials - use unlit mode to show textures without lighting dependency
                 meshes.forEach((m) => {
