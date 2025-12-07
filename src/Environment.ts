@@ -75,9 +75,9 @@ export class Environment {
         }
 
         // Rotate planet
-        if (this.planet) {
-            this.planet.rotation.y += deltaTime * 0.05;
-        }
+        // if (this.planet) {
+        //     this.planet.rotation.y += deltaTime * 0.05;
+        // }
     }
 
     private loadSpaceDustTextures(): void {
@@ -273,7 +273,7 @@ export class Environment {
                 
                 // Clear rotation quaternion to allow Euler rotation
                 root.rotationQuaternion = null;
-                root.rotation = Vector3.Zero();
+                root.rotation = new Vector3(Math.PI / 20, Math.PI , 0);
 
                 this.planet = root;
 
@@ -298,12 +298,6 @@ export class Environment {
                     }
                 });
             },
-            (event) => {
-                console.log("Planet loading progress: " + (event.loaded / event.total * 100) + "%");
-            },
-            (_scene, message, exception) => {
-                console.error("Planet loading error:", message, exception);
-            }
         );
     }
 
