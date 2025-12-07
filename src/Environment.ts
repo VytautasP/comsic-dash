@@ -1,10 +1,13 @@
-import { Scene, Vector3, Color3, Color4, MeshBuilder, StandardMaterial, ParticleSystem, Texture, Mesh, PhotoDome, SphereParticleEmitter } from '@babylonjs/core';
+import { Scene, Vector3, Color3, Color4, MeshBuilder, StandardMaterial, ParticleSystem, Texture, Mesh, PhotoDome, SphereParticleEmitter, SceneLoader, AbstractMesh } from '@babylonjs/core';
+import '@babylonjs/loaders/glTF';
+import '@babylonjs/loaders/glTF/2.0/Extensions/KHR_materials_pbrSpecularGlossiness';
 
 export class Environment {
     private scene: Scene;
     private spaceDustSystem: ParticleSystem | null = null;
     private spaceDustNormal: Texture | null = null;
     private spaceDustStreak: Texture | null = null;
+    private planet: AbstractMesh | null = null;
 
     constructor(scene: Scene) {
         this.scene = scene;
@@ -69,6 +72,11 @@ export class Environment {
                 this.spaceDustSystem.minEmitPower = 60;
                 this.spaceDustSystem.maxEmitPower = 100;
             }
+        }
+
+        // Rotate planet
+        if (this.planet) {
+            this.planet.rotation.y += deltaTime * 0.05;
         }
     }
 
@@ -228,15 +236,75 @@ export class Environment {
         pathMat.alpha = 0.2;
         pathMat.wireframe = true;
         path.material = pathMat;
+        
+
+        this.loadPlanet();
+    }
+
+    private loadPlanet(): void {
+        const modelPath = '/models/planet/';
+        const modelFile = 'scene.gltf';
 
         // Add some distant planets/moons
-        const planet = MeshBuilder.CreateSphere("planet", { diameter: 60 }, this.scene);
-        planet.position = new Vector3(80, 30, 200);
-        const planetMat = new StandardMaterial("planetMat", this.scene);
-        planetMat.emissiveColor = new Color3(0.05, 0, 0.1);
-        planetMat.diffuseColor = new Color3(0.1, 0, 0.2);
-        planetMat.specularColor = new Color3(0, 0, 0);
-        planet.material = planetMat;
+        SceneLoader.ImportMesh(
+            "",
+            modelPath,
+            modelFile,
+            this.scene,
+            (meshes) => {
+                console.log("Planet loaded successfully", meshes);
+                const root = meshes[0];
+                root.name = "planet_root";
+                
+                // Ensure world matrices are computed
+                meshes.forEach(m => m.computeWorldMatrix(true));
+
+                // Check bounds before moving
+                const { min, max } = root.getHierarchyBoundingVectors();
+                console.log("Original Planet Bounds:", min, max);
+                const size = max.subtract(min);
+                console.log("Original Planet Size:", size);
+
+                // Original size is approx 4000 units. We want it to be around 60 units (like the sphere).
+                // 60 / 4000 = 0.015. Let's try 0.02
+                const scale = 0.06;
+                root.scaling = new Vector3(scale, scale, scale);
+                root.position = new Vector3(80, 30, 200);
+                
+                // Clear rotation quaternion to allow Euler rotation
+                root.rotationQuaternion = null;
+                root.rotation = Vector3.Zero();
+
+                this.planet = root;
+
+                // Fix materials - use unlit mode to show textures without lighting dependency
+                meshes.forEach((m) => {
+                    if (m.material) {
+                        const mat = m.material as any;
+                        
+                        if (mat.getClassName() === 'PBRMaterial') {
+                            // Disable fog so the distant planet is clearly visible
+                            mat.fogEnabled = false;
+                            
+                            // Use unlit mode - this shows the albedo texture directly
+                            // without any lighting calculations
+                            mat.unlit = true;
+                            
+                            // Reset emissive to avoid white glow
+                            mat.emissiveColor = new Color3(0, 0, 0);
+                            mat.emissiveIntensity = 0;
+                            mat.emissiveTexture = null;
+                        }
+                    }
+                });
+            },
+            (event) => {
+                console.log("Planet loading progress: " + (event.loaded / event.total * 100) + "%");
+            },
+            (_scene, message, exception) => {
+                console.error("Planet loading error:", message, exception);
+            }
+        );
     }
 
     private createTrackRings(): void {
