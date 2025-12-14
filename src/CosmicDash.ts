@@ -58,6 +58,7 @@ export class CosmicDash {
   private glowLayer: GlowLayer;
   private inputMap: { [key: string]: boolean } = {};
   private keyPressTimes: { [key: string]: number } = {};
+  private inspectorLoaded = false;
 
   constructor(canvas: HTMLCanvasElement) {
     // Initialize Babylon.js engine
@@ -153,6 +154,11 @@ export class CosmicDash {
              this.keyPressTimes[key] = Date.now();
         }
         this.inputMap[key] = true;
+
+        if (key === 'i') {
+            void this.toggleDebugLayer();
+            return;
+        }
         
         if (key === 'p') {
             this.togglePause();
@@ -175,6 +181,19 @@ export class CosmicDash {
         }
       })
     );
+  }
+
+  private async toggleDebugLayer(): Promise<void> {
+    if (!this.inspectorLoaded) {
+      await import('@babylonjs/inspector');
+      this.inspectorLoaded = true;
+    }
+
+    if (this.scene.debugLayer.isVisible()) {
+      this.scene.debugLayer.hide();
+    } else {
+      this.scene.debugLayer.show({ embedMode: false });
+    }
   }
 
   private togglePause(): void {
