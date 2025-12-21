@@ -11,6 +11,8 @@ export class Player {
     private readonly MAX_SPEED = 10;
     private readonly DRAG = 5;
     
+    private isBoosting = false;
+
     // Roll mechanics
     private isRolling = false;
     private rollTimer = 0;
@@ -229,15 +231,11 @@ export class Player {
         emitter.maxEmitBox = new Vector3(0.4, 0.1, 0);
         particleSystem.particleEmitterType = emitter;
 
-        particleSystem.color1 = new Color4(0.4, 0.8, 1.0, 1.0);
-        particleSystem.color2 = new Color4(0.2, 0.5, 1.0, 1.0);
-        particleSystem.colorDead = new Color4(0, 0, 0.2, 0.0);
-
         // Add color gradient for a more realistic fire look
-        particleSystem.addColorGradient(0, new Color4(1, 1, 1, 1)); // White hot at nozzle
-        particleSystem.addColorGradient(0.2, new Color4(0, 1, 1, 1)); // Cyan
-        particleSystem.addColorGradient(0.5, new Color4(0, 0.5, 1, 0.5)); // Blue
-        particleSystem.addColorGradient(1, new Color4(0, 0, 0.2, 0)); // Fade to dark blue
+        particleSystem.addColorGradient(0, new Color4(1, 1, 0.5, 1)); // Yellow-white hot
+        particleSystem.addColorGradient(0.2, new Color4(1, 0.5, 0, 1)); // Orange
+        particleSystem.addColorGradient(0.5, new Color4(1, 0.2, 0, 0.5)); // Red-orange
+        particleSystem.addColorGradient(1, new Color4(0.3, 0, 0, 0)); // Fade to dark red
 
         particleSystem.minSize = 0.1;
         particleSystem.maxSize = 0.4;
@@ -250,7 +248,7 @@ export class Player {
         particleSystem.minLifeTime = 0.2;
         particleSystem.maxLifeTime = 0.5;
 
-        particleSystem.emitRate = 800;
+        particleSystem.emitRate = 500;
 
         particleSystem.blendMode = ParticleSystem.BLENDMODE_ADD;
 
@@ -310,19 +308,34 @@ export class Player {
     }
 
     public setBoost(enabled: boolean): void {
+        if (this.isBoosting === enabled) return;
+        this.isBoosting = enabled;
+
         if (this.trail) {
+            // Clear existing gradients
+            const gradients = this.trail.getColorGradients();
+            if (gradients && gradients.length > 0) {
+                [...gradients].forEach(g => this.trail!.removeColorGradient(g.gradient));
+            }
+
             if (enabled) {
                 this.trail.emitRate = 2000;
                 this.trail.minSize = 0.2;
                 this.trail.maxSize = 0.5;
-                this.trail.color1 = new Color4(1, 0.5, 0, 1); // Orange/Red boost
-                this.trail.color2 = new Color4(1, 0, 0, 1);
+                // Blue boost
+                this.trail.addColorGradient(0, new Color4(1, 1, 1, 1)); // White hot
+                this.trail.addColorGradient(0.2, new Color4(0, 1, 1, 1)); // Cyan
+                this.trail.addColorGradient(0.5, new Color4(0, 0.5, 1, 0.5)); // Blue
+                this.trail.addColorGradient(1, new Color4(0, 0, 0.2, 0)); // Fade to dark blue
             } else {
                 this.trail.emitRate = 500;
                 this.trail.minSize = 0.1;
                 this.trail.maxSize = 0.3;
-                this.trail.color1 = new Color4(0, 1, 1, 1); // Cyan normal
-                this.trail.color2 = new Color4(0, 0.5, 1, 1);
+                // Hot fire cruise
+                this.trail.addColorGradient(0, new Color4(1, 1, 0.5, 1)); // Yellow-white hot
+                this.trail.addColorGradient(0.2, new Color4(1, 0.5, 0, 1)); // Orange
+                this.trail.addColorGradient(0.5, new Color4(1, 0.2, 0, 0.5)); // Red-orange
+                this.trail.addColorGradient(1, new Color4(0.3, 0, 0, 0)); // Fade to dark red
             }
         }
     }
