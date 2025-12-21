@@ -124,9 +124,10 @@ export class Environment {
                 console.error("Error loading PhotoDome texture:", message);
             }
         );
-        
+        dome.rotation = new Vector3(0.755689761851688, 1.6485541520295364, 0.24580450130660822);// (debugNode as BABYLON.Unknown)
         // Adjust rotation to put the best part of the nebula in front of the player
-        dome.mesh.rotation.y = 1.5 * Math.PI; 
+        //dome.mesh.rotation.y = 1.5 * Math.PI; 
+        dome.mesh.rotation = new Vector3(-0.47718987407331576, -1.096195174860977, -2.547581051109142);
         
         // Disable fog on the skybox so it's always visible
         if (dome.mesh.material) {
@@ -249,7 +250,7 @@ export class Environment {
 
         // Create the spin axis transform node first
         this.planetSpinAxis = new TransformNode("planetSpinAxis", this.scene);
-        this.planetSpinAxis.position = new Vector3(66.98295593261719, 36.99456024169922, 122.33858489990234);
+        this.planetSpinAxis.position = new Vector3(101.23208618164062, 36.64754104614258, 221.837890625);
         this.planetSpinAxis.rotationQuaternion = new Quaternion(-0.05050054691316438, -0.9618297478723448, 0.2648289311803674, 0.04689208972756507);
 
         // Add some distant planets/moons

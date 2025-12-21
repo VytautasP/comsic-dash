@@ -335,9 +335,10 @@ export class CosmicDash {
     this.player.setBoost(isBoosting);
 
     // Calculate Game Speed
-    const scoreSpeed = this.baseSpeed + (this.score / 1000) * 0.1;
-    this.gameSpeed = isBoosting ? scoreSpeed * 2.5 : scoreSpeed;
+    //const scoreSpeed = this.baseSpeed + (this.score / 1000) * 0.1;
+    //this.gameSpeed = isBoosting ? scoreSpeed * 2.5 : scoreSpeed; old version with increasing speed over time
 
+    this.gameSpeed = isBoosting ? this.baseSpeed * 2.5 : this.baseSpeed;
     this.environment.update(deltaTime, this.gameSpeed, this.baseSpeed);
 
     // Camera follow logic
