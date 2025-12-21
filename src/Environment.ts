@@ -78,7 +78,7 @@ export class Environment {
 
         // Rotate planet
         if (this.planet) {
-            this.planetSpinAxis!.rotate(Vector3.Up(), deltaTime * 0.005, Space.LOCAL);
+            this.planetSpinAxis!.rotate(Vector3.Up(), deltaTime * 0.009, Space.LOCAL);
         }
     }
 
@@ -287,7 +287,8 @@ export class Environment {
                 if (this.planetSpinAxis) {
                     this.planet.parent = this.planetSpinAxis;
                     this.planet.position = Vector3.Zero();
-                    new AxesViewer(this.scene, 10).xAxis.parent = this.planetSpinAxis;
+                    //Debug axis view
+                    //new AxesViewer(this.scene, 10).xAxis.parent = this.planetSpinAxis;
                     this.planet.rotation = new Vector3(-0.2916225081925105, 2.2325818092704317, -0.2842463635966254);
 
                 }
