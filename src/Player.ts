@@ -278,7 +278,7 @@ export class Player {
         }
 
         // Position emitter at the back of the ship
-        emitterMesh.position = localBackward.scale(0.8);
+        emitterMesh.position = new Vector3(0, 1.8062031269073486, -4.89084529876709);
 
         // Set fixed power and handle velocity in startDirectionFunction
         particleSystem.minEmitPower = 1;
