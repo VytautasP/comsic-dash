@@ -1,4 +1,4 @@
-import { Scene, Mesh, Vector3, SceneLoader, MeshBuilder, StandardMaterial, Color3, Color4, ParticleSystem, Texture, SphereParticleEmitter, Scalar } from '@babylonjs/core';
+import { Scene, Mesh, Vector3, Matrix, SceneLoader, MeshBuilder, StandardMaterial, Color3, Color4, ParticleSystem, Texture, SphereParticleEmitter, Scalar, BoxParticleEmitter } from '@babylonjs/core';
 import '@babylonjs/loaders/glTF';
 
 export class Player {
@@ -55,7 +55,7 @@ export class Player {
                 this.mesh.position = new Vector3(0, 0.5, -3);
                 
                 this.calculateBoundingRadius();
-                this.createParticleTrail(this.mesh);
+                this.createEngineParticleTrail(this.mesh);
                 return;
             }
         } catch (error) {
@@ -196,16 +196,15 @@ export class Player {
         topFin.material = wingMaterial;
 
         // Create particle trail
-        this.createParticleTrail(ship);
+        this.createEngineParticleTrail(ship);
 
         return root;
     }
 
-    private createParticleTrail(parent: Mesh): void {
+    private createEngineParticleTrail(parent: Mesh): void {
         // Create invisible emitter mesh at the back of the ship
         const emitterMesh = MeshBuilder.CreateBox('thrusterEmitter', { size: 0.1 }, this.scene);
         emitterMesh.parent = parent;
-        emitterMesh.position = new Vector3(0, 1.8, -5.5); // Position at back engines (positive Z for back)
         emitterMesh.isVisible = false;
         
         const particleSystem = new ParticleSystem('trail', 2000, this.scene);
@@ -219,32 +218,92 @@ export class Player {
         );
 
         particleSystem.emitter = emitterMesh;
-        const emitter = new SphereParticleEmitter(0.2);
+        particleSystem.worldOffset = new Vector3(0, 0, 0);
+        
+        // Use world space so particles don't rotate with the ship
+        particleSystem.isLocal = false;
+        
+        // Use a Box Emitter to simulate two engines
+        const emitter = new BoxParticleEmitter();
+        emitter.minEmitBox = new Vector3(-0.4, -0.1, 0);
+        emitter.maxEmitBox = new Vector3(0.4, 0.1, 0);
         particleSystem.particleEmitterType = emitter;
 
-        particleSystem.color1 = new Color4(0, 1, 1, 1);
-        particleSystem.color2 = new Color4(0, 0.5, 1, 1);
-        particleSystem.colorDead = new Color4(0, 0, 0.5, 0);
+        particleSystem.color1 = new Color4(0.4, 0.8, 1.0, 1.0);
+        particleSystem.color2 = new Color4(0.2, 0.5, 1.0, 1.0);
+        particleSystem.colorDead = new Color4(0, 0, 0.2, 0.0);
+
+        // Add color gradient for a more realistic fire look
+        particleSystem.addColorGradient(0, new Color4(1, 1, 1, 1)); // White hot at nozzle
+        particleSystem.addColorGradient(0.2, new Color4(0, 1, 1, 1)); // Cyan
+        particleSystem.addColorGradient(0.5, new Color4(0, 0.5, 1, 0.5)); // Blue
+        particleSystem.addColorGradient(1, new Color4(0, 0, 0.2, 0)); // Fade to dark blue
 
         particleSystem.minSize = 0.1;
-        particleSystem.maxSize = 0.3;
+        particleSystem.maxSize = 0.4;
 
-        particleSystem.minLifeTime = 0.3;
-        particleSystem.maxLifeTime = 0.6;
+        // Size gradient to make it look like a jet
+        particleSystem.addSizeGradient(0, 0.1);
+        particleSystem.addSizeGradient(0.2, 0.6);
+        particleSystem.addSizeGradient(1, 0.2);
 
-        particleSystem.emitRate = 500;
+        particleSystem.minLifeTime = 0.2;
+        particleSystem.maxLifeTime = 0.5;
+
+        particleSystem.emitRate = 800;
 
         particleSystem.blendMode = ParticleSystem.BLENDMODE_ADD;
 
-        particleSystem.gravity = new Vector3(0, 0, -25); // Particles trail behind (positive Z)
+        // No gravity, particles just emit backward
+        particleSystem.gravity = new Vector3(0, 0, 0);
 
-        particleSystem.direction1 = new Vector3(-0.2, 0, 1);
-        particleSystem.direction2 = new Vector3(0.2, 0, 1);
+        // Determine the ship's local backward vector
+        parent.computeWorldMatrix(true);
+        const shipMatrix = parent.getWorldMatrix();
+        const axes = [Vector3.Right(), Vector3.Up(), Vector3.Forward()];
+        let localBackward = new Vector3(0, 0, -1);
+        let minDot = 1;
+        
+        for (const axis of axes) {
+            const worldAxis = Vector3.TransformNormal(axis, shipMatrix);
+            if (worldAxis.z < minDot) {
+                minDot = worldAxis.z;
+                localBackward.copyFrom(axis);
+            }
+            const negWorldAxis = worldAxis.scale(-1);
+            if (negWorldAxis.z < minDot) {
+                minDot = negWorldAxis.z;
+                localBackward.copyFrom(axis).scaleInPlace(-1);
+            }
+        }
 
-        particleSystem.minEmitPower = 0.5;
+        // Position emitter at the back of the ship
+        emitterMesh.position = localBackward.scale(0.8);
+
+        // Set fixed power and handle velocity in startDirectionFunction
+        particleSystem.minEmitPower = 1;
         particleSystem.maxEmitPower = 1;
 
-        particleSystem.updateSpeed = 0.01;
+        particleSystem.startDirectionFunction = (worldMatrix: Matrix, directionToUpdate: Vector3) => {
+            // The ship's world-space backward vector
+            const worldBackward = this.mesh.forward.scale(-1);
+            
+            // Base exhaust velocity relative to ship
+            const isBoosting = this.trail && this.trail.emitRate > 1000;
+            const exhaustSpeed = isBoosting ? 35 : 20;
+            
+            // Resultant world velocity = ship velocity + (backward * exhaustSpeed)
+            // This ensures particles inherit ship momentum and stay aligned with movement
+            directionToUpdate.copyFrom(this.velocity);
+            directionToUpdate.addInPlace(worldBackward.scale(exhaustSpeed));
+            
+            // Add some turbulence/spread
+            directionToUpdate.x += Scalar.RandomRange(-2, 2);
+            directionToUpdate.y += Scalar.RandomRange(-2, 2);
+            directionToUpdate.z += Scalar.RandomRange(-2, 2);
+        };
+
+        particleSystem.updateSpeed = 0.015;
 
         particleSystem.start();
         this.trail = particleSystem;
